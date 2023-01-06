@@ -1,28 +1,18 @@
+//Libraries
 #include <FastLED.h>
 #include "pitches.h"
 #include <avr/sleep.h>
 #include <EEPROM.h>
-byte digitalSwitch;
-byte patterSwitch;
-FASTLED_USING_NAMESPACE
 
-CRGBPalette16 currentPalette;
-TBlendType    currentBlending;
 
-// FastLED "100-lines-of-code" demo reel, showing just a few 
-// of the kinds of animation patterns you can quickly and easily 
-// compose using FastLED.  
-//
-// This example also shows one easy way to define multiple 
-// animations patterns and have them automatically rotate.
-//
-// -Mark Kriegsman, December 2014
 
+
+
+//----------------------------------------Constants-----------------------------------
 #define BUTTON_THRESHOLD     500   
 #define GHUE_ADDITION_MUSIC 100
 
 #define DATA_PIN    1
-//#define CLK_PIN   4
 #define LED_TYPE    WS2811
 #define COLOR_ORDER GRB
 #define NUM_LEDS    5
@@ -30,7 +20,6 @@ CRGB leds[NUM_LEDS];
 
 #define BRIGHTNESS          30
 #define FRAMES_PER_SECOND  120
-
 
 // Jingle Bells
 
@@ -58,7 +47,6 @@ byte jingle_tempo[] = {
    
 
 // We wish you a merry Christmas
-int i;
 int wish_melody[] = {
   NOTE_B3, 
   NOTE_F4, NOTE_F4, NOTE_G4, NOTE_F4, NOTE_E4,
@@ -107,66 +95,83 @@ byte santa_tempo[] = {
   1
 };
 
+//--------------------------------------------Global variables-----------------------------
+byte digitalSwitch;
+byte patterSwitch;
+
+FASTLED_USING_NAMESPACE
+
+CRGBPalette16 currentPalette;
+TBlendType    currentBlending;
+
 bool song;
 long int old_millis;
-void setup() {
-  FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  //FastLED.addLeds<LED_TYPE,DATA_PIN,CLK_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-
-  // set master brightness control
-  FastLED.setBrightness(BRIGHTNESS);
-digitalSwitch=EEPROM.read(0);  
-patterSwitch=EEPROM.read(1);
-
-
-if (digitalSwitch==0){
-  digitalSwitch=!digitalSwitch;   
-  EEPROM.write(0, digitalSwitch);  
-  FastLED.clear();
-  FastLED.show();
-  set_sleep_mode(SLEEP_MODE_PWR_DOWN);  
-  sleep_enable();     
-  sleep_mode(); 
-  }
-
-else{
-  digitalSwitch=!digitalSwitch;   
-  EEPROM.write(0, digitalSwitch);   
-  }   
-if (patterSwitch==0){
-  
-  patterSwitch=!patterSwitch;   
-  EEPROM.write(1, patterSwitch);  
-  song = 0;
-  }
-
-else{
-  patterSwitch=!patterSwitch;   
-  EEPROM.write(1, patterSwitch);   
-  song = 1;
-  }   
-
-   pinMode(0, OUTPUT); 
-  // tell FastLED about the LED strip configuration
-  
-old_millis = millis();
-pinMode(5,INPUT);
-
-
-  currentPalette = RainbowColors_p;
-    currentBlending = LINEARBLEND;
-
-}
 
 bool g_robin_is_on = true;
 
 
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
+
+
+
+void setup() {
+  FastLED.addLeds<LED_TYPE,DATA_PIN,COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  // set master brightness control
+  FastLED.setBrightness(BRIGHTNESS);
+
+  //The on/off switch is actually the reset button. To get around this mistake there is a bit in EEPROM that is toggled
+  //so it knows that if it used to be on then it should be off and vice verse
+  //The other bit in EEPROM stores the previous pattern
+  digitalSwitch=EEPROM.read(0);  
+  patterSwitch=EEPROM.read(1);
+
+
+  if (digitalSwitch==0){
+    digitalSwitch=!digitalSwitch;   
+    EEPROM.write(0, digitalSwitch);  
+    FastLED.clear();
+    FastLED.show();
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);  
+    sleep_enable();     
+    sleep_mode(); 
+    }
+
+  else{
+    digitalSwitch=!digitalSwitch;   
+    EEPROM.write(0, digitalSwitch);   
+    }   
+  if (patterSwitch==0){
+    
+    patterSwitch=!patterSwitch;   
+    EEPROM.write(1, patterSwitch);  
+    song = 0;
+    }
+
+  else{
+    patterSwitch=!patterSwitch;   
+    EEPROM.write(1, patterSwitch);   
+    song = 1;
+    }   
+
+   pinMode(0, OUTPUT); 
+  pinMode(5,INPUT);
+  
+` old_millis = millis();
+
+
+
+  currentPalette = RainbowColors_p;
+  currentBlending = LINEARBLEND;
+
+}
+
+
   
 void loop()
 {
   if (g_robin_is_on){
-    if ((millis()-old_millis)>100){
+    if ((millis()-old_millis)>100){//Every 100ms checks:
+    //First checks if any of the song buttons are pressed
     if (analogRead(A1)<BUTTON_THRESHOLD){
     
       int size = sizeof(jingle_melody) / sizeof(int);
@@ -268,23 +273,25 @@ void loop()
       
     
     }
+    //If no song buttons are pressed then the robin will do the animation
       else{
         if (song){
-        rainbow();
-        FastLED.show();  
-        gHue = gHue+3; 
-        FastLED.delay(10); 
+          rainbow();
+          FastLED.show();  
+          gHue = gHue+3; 
+          FastLED.delay(10); 
         }
         else{
-          ChangePalettePeriodically();
+          currentPalette = Holly_p;           
+          currentBlending = LINEARBLEND; 
     
-    static uint8_t startIndex = 0;
-    startIndex = startIndex + 1; /* motion speed */
-    
-    FillLEDsFromPaletteColors( startIndex);
-    
-    FastLED.show();
-    FastLED.delay(10);
+          static uint8_t startIndex = 0;
+          startIndex = startIndex + 1; /* motion speed */
+          
+          FillLEDsFromPaletteColors( startIndex);
+          
+          FastLED.show();
+          FastLED.delay(10);
         }
       }
   }
@@ -304,6 +311,7 @@ const TProgmemRGBPalette16 Holly_p FL_PROGMEM =
    Holly_Green, Holly_Green, Holly_Green, Holly_Green, 
    Holly_Green, Holly_Green, Holly_Green, Holly_Red 
 };
+
 void rainbow() 
 {
   // FastLED's built-in rainbow generator
@@ -318,28 +326,9 @@ void FillLEDsFromPaletteColors( uint8_t colorIndex)
         colorIndex += 3;
     }
 }
-void ChangePalettePeriodically()
-{
-  
-        //secondHand ==  0)  { currentPalette = RainbowColors_p;         currentBlending = LINEARBLEND; }
-       
-      //currentPalette = RainbowStripeColors_p;   currentBlending = NOBLEND;  //yes
-        
-       //currentPalette = RainbowStripeColors_p;   currentBlending = LINEARBLEND; //yes/*
-        //if( secondHand == 20)  { SetupPurpleAndGreenPalette();             currentBlending = LINEARBLEND; }
-        //if( secondHand == 25)  { SetupTotallyRandomPalette();              currentBlending = LINEARBLEND; }
-        //if( secondHand == 30)  { SetupBlackAndWhiteStripedPalette();       currentBlending = NOBLEND; }
-        //if( secondHand == 35)  { SetupBlackAndWhiteStripedPalette();       currentBlending = LINEARBLEND; }
-   currentPalette = Holly_p;           currentBlending = LINEARBLEND; 
-        //if( secondHand == 45)  { currentPalette = PartyColors_p;           currentBlending = LINEARBLEND; }
-        //if( secondHand == 50)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = NOBLEND;  }
-        //if( secondHand == 55)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = LINEARBLEND; }
-        
-    
-}
 
 
-
+//I couldnt get the tone function to work on the attiny85 so instead I'm using this functino
 void buzz(int targetPin, long frequency, long length) {
   
   long delayValue = 1000000 / frequency / 2; // calculate the delay value between transitions
